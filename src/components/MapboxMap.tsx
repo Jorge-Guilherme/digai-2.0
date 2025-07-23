@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 interface MapboxMapProps {
   onRegionClick: (regionData: any) => void;
   mapboxToken: string;
+  selectedRegion?: string | null;
+  onResetZoom?: () => void;
 }
 
 // Dados mockados das regiões do Recife
@@ -17,7 +19,7 @@ const mockRegionsData = {
     saude: 4,
     investimento: 8000000,
     obras: ["Revitalização da Praia", "Novo Centro de Saúde"],
-    coordinates: [-8.1137, -34.8986]
+    coordinates: [-34.8986, -8.1137] // [lng, lat]
   },
   "Centro": {
     name: "Centro",
@@ -25,7 +27,7 @@ const mockRegionsData = {
     saude: 6,
     investimento: 12000000,
     obras: ["Restauro do Teatro Santa Isabel", "Modernização do Mercado"],
-    coordinates: [-8.0578, -34.8711]
+    coordinates: [-34.8711, -8.0578]
   },
   "Zona Norte": {
     name: "Zona Norte",
@@ -33,7 +35,7 @@ const mockRegionsData = {
     saude: 8,
     investimento: 15000000,
     obras: ["Construção de 3 novas escolas", "Hospital Regional"],
-    coordinates: [-8.0276, -34.8765]
+    coordinates: [-34.8765, -8.0276]
   },
   "Ibura": {
     name: "Ibura",
@@ -41,11 +43,11 @@ const mockRegionsData = {
     saude: 5,
     investimento: 15000000,
     obras: ["Centro Esportivo", "Unidade de Pronto Atendimento"],
-    coordinates: [-8.1437, -34.9456]
+    coordinates: [-34.9456, -8.1437]
   }
 };
 
-const MapboxMap: React.FC<MapboxMapProps> = ({ onRegionClick, mapboxToken }) => {
+const MapboxMap: React.FC<MapboxMapProps> = ({ onRegionClick, mapboxToken, selectedRegion, onResetZoom }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [showTokenInput, setShowTokenInput] = useState(!mapboxToken);
@@ -55,18 +57,16 @@ const MapboxMap: React.FC<MapboxMapProps> = ({ onRegionClick, mapboxToken }) => 
     if (!mapContainer.current || !mapboxToken) return;
 
     mapboxgl.accessToken = mapboxToken;
-    
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/dark-v11',
-      center: [-34.8851, -8.0476], // Recife coordinates
+      center: [-34.8851, -8.0476],
       zoom: 11,
       pitch: 45,
       bearing: 0
     });
 
     map.current.on('load', () => {
-      // Add 3D building layer
       map.current?.addLayer({
         'id': '3d-buildings',
         'source': 'composite',
@@ -94,17 +94,21 @@ const MapboxMap: React.FC<MapboxMapProps> = ({ onRegionClick, mapboxToken }) => 
         }
       });
 
-      // Add mock regions as circles
       Object.entries(mockRegionsData).forEach(([name, data]) => {
+        const lngLat = data.coordinates as [number, number];
         const marker = new mapboxgl.Marker({
           color: '#00D9FF',
           scale: 1.5
         })
-          .setLngLat([data.coordinates[1], data.coordinates[0]])
+          .setLngLat(lngLat)
           .addTo(map.current!);
 
         marker.getElement().addEventListener('click', () => {
-          onRegionClick(data);
+          if (selectedRegion === name) {
+            onResetZoom && onResetZoom();
+          } else {
+            onRegionClick(data);
+          }
         });
 
         marker.getElement().style.cursor = 'pointer';
@@ -115,7 +119,21 @@ const MapboxMap: React.FC<MapboxMapProps> = ({ onRegionClick, mapboxToken }) => 
     return () => {
       map.current?.remove();
     };
-  }, [mapboxToken, onRegionClick]);
+  }, [mapboxToken, onRegionClick, onResetZoom]);
+
+  // Novo useEffect para controlar o zoom
+  useEffect(() => {
+    if (!map.current) return;
+    if (!selectedRegion) {
+      map.current.flyTo({ center: [-34.8851, -8.0476], zoom: 11, pitch: 45, bearing: 0, speed: 1.2 });
+    } else {
+      const region = mockRegionsData[selectedRegion];
+      if (region) {
+        const lngLat = region.coordinates as [number, number];
+        map.current.flyTo({ center: lngLat, zoom: 15, pitch: 45, bearing: 0, speed: 1.2 });
+      }
+    }
+  }, [selectedRegion]);
 
   const handleTokenSubmit = () => {
     if (tempToken.trim()) {

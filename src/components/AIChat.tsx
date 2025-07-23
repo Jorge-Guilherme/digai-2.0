@@ -11,7 +11,11 @@ interface Message {
   timestamp: Date;
 }
 
-const AIChat: React.FC = () => {
+interface AIChatProps {
+  selectedRegion?: string | null;
+}
+
+const AIChat: React.FC<AIChatProps> = ({ selectedRegion }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -21,47 +25,32 @@ const AIChat: React.FC = () => {
     }
   ]);
   const [inputValue, setInputValue] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Respostas mockadas baseadas em palavras-chave
-  const getMockResponse = (question: string): string => {
-    const lowerQuestion = question.toLowerCase();
-    
-    if (lowerQuestion.includes('investimento') || lowerQuestion.includes('capital')) {
-      return 'Ibura recebeu R$ 15M em 2023, sendo o maior investimento da Zona Sul. Boa Viagem teve R$ 8M focados em infraestrutura turística, enquanto a Zona Norte recebeu R$ 15M para expansão educacional.';
-    }
-    
-    if (lowerQuestion.includes('escola') || lowerQuestion.includes('educação')) {
-      return 'A Zona Norte possui 25 escolas, sendo a região com mais unidades educacionais. Ibura tem 18 escolas, Boa Viagem tem 12 e o Centro possui 8 unidades especializadas em ensino técnico.';
-    }
-    
-    if (lowerQuestion.includes('saúde') || lowerQuestion.includes('hospital')) {
-      return 'A Zona Norte lidera com 8 unidades de saúde, incluindo o novo Hospital Regional. O Centro tem 6 unidades especializadas, Ibura possui 5 UPAs e Boa Viagem conta com 4 centros de saúde.';
-    }
-    
-    if (lowerQuestion.includes('obras') || lowerQuestion.includes('construção')) {
-      return 'Principais obras em andamento: Zona Norte - 3 novas escolas e Hospital Regional; Ibura - Centro Esportivo e UPA; Boa Viagem - Revitalização da Praia; Centro - Restauro do Teatro Santa Isabel.';
-    }
-    
-    if (lowerQuestion.includes('boa viagem')) {
-      return 'Boa Viagem: 12 escolas, 4 unidades de saúde, R$ 8M investidos. Obras principais: Revitalização da Praia e Novo Centro de Saúde. Região focada no turismo e serviços.';
-    }
-    
-    if (lowerQuestion.includes('centro')) {
-      return 'Centro do Recife: 8 escolas técnicas, 6 unidades de saúde especializadas, R$ 12M investidos. Obras: Restauro do Teatro Santa Isabel e Modernização do Mercado São José.';
-    }
-    
-    if (lowerQuestion.includes('zona norte')) {
-      return 'Zona Norte: 25 escolas, 8 unidades de saúde, R$ 15M investidos. Maior região em expansão educacional e de saúde, com foco em desenvolvimento social.';
-    }
-    
-    if (lowerQuestion.includes('ibura')) {
-      return 'Ibura: 18 escolas, 5 unidades de saúde, R$ 15M investidos. Obras: Centro Esportivo e nova UPA. Região com forte investimento em infraestrutura social.';
-    }
-    
-    return 'Posso ajudá-lo com informações sobre investimentos, escolas, unidades de saúde e obras nas regiões do Recife. Tente perguntar sobre uma região específica ou tema de interesse!';
-  };
 
-  const handleSendMessage = () => {
+  // Função para buscar resposta do Gemini via backend
+  const getGeminiResponse = async (question: string): Promise<string> => {
+    // Prompt engineering: contexto + pergunta do usuário + região
+    const contextoBase = `
+Você é uma IA especialista em dados urbanos do Recife, Capital de Pernambuco. 
+Responda de forma clara e objetiva, com no máximo 100 palavras. Não inclua negritos ou qualquer formatação no texto.`;
+    const contextoRegiao = selectedRegion ? `Considere que a pergunta se refere à região: ${selectedRegion}.` : '';
+    const promptFinal = `${contextoBase}\n${contextoRegiao}\nPergunta: ${question}`;
+
+  try {
+    const res = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: promptFinal })
+    });
+    const data = await res.json();
+    return data.text || 'Sem resposta.';
+  } catch (err) {
+    return 'Erro ao conectar à IA.';
+  }
+};
+
+  const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
     const userMessage: Message = {
@@ -71,15 +60,25 @@ const AIChat: React.FC = () => {
       timestamp: new Date()
     };
 
-    const aiResponse: Message = {
-      id: (Date.now() + 1).toString(),
-      text: getMockResponse(inputValue),
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue('');
+    setLoading(true);
+
+    // Adiciona mensagem temporária de carregando
+    const loadingId = (Date.now() + 1).toString();
+    setMessages(prev => [...prev, {
+      id: loadingId,
+      text: '',
       isUser: false,
       timestamp: new Date()
-    };
+    }]);
 
-    setMessages(prev => [...prev, userMessage, aiResponse]);
-    setInputValue('');
+    const aiText = await getGeminiResponse(inputValue);
+
+    setMessages(prev => prev.map(m =>
+      m.id === loadingId ? { ...m, text: aiText } : m
+    ));
+    setLoading(false);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -113,13 +112,18 @@ const AIChat: React.FC = () => {
                 <Bot className="w-4 h-4 text-white" />
               </div>
             )}
-            
             <Card className={`max-w-[250px] ${message.isUser ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
               <CardContent className="p-3">
-                <p className="text-sm leading-relaxed">{message.text}</p>
+                {loading && message.text === '' && !message.isUser ? (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-4 h-4 border-2 border-neon-blue border-t-transparent rounded-full animate-spin"></span>
+                    <span className="text-xs text-muted-foreground">Pensando...</span>
+                  </div>
+                ) : (
+                  <p className="text-sm leading-relaxed">{message.text}</p>
+                )}
               </CardContent>
             </Card>
-
             {message.isUser && (
               <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
                 <User className="w-4 h-4 text-secondary-foreground" />

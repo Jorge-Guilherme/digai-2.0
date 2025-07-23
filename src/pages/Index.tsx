@@ -9,13 +9,23 @@ import heroImage from '@/assets/recife-hero.jpg';
 const Index = () => {
   const [selectedRegion, setSelectedRegion] = useState<any>(null);
   const [showDashboard, setShowDashboard] = useState(false);
+
+  // Para controlar qual região está selecionada (nome)
+  const [selectedRegionName, setSelectedRegionName] = useState<string | null>(null);
   
   // Token do Mapbox inserido diretamente
   const mapboxToken = 'pk.eyJ1Ijoiam9yZ2VndWlsaGVybWUiLCJhIjoiY21kZjU0YzdiMDh1MzJrcTBnbHdrcGF5cSJ9.hXoOgul4b3KPaDxX4fF6Gw';
 
   const handleRegionClick = (regionData: any) => {
     setSelectedRegion(regionData);
+    setSelectedRegionName(regionData.name);
     setShowDashboard(true);
+  };
+
+  const handleResetZoom = () => {
+    setSelectedRegion(null);
+    setSelectedRegionName(null);
+    setShowDashboard(false);
   };
 
   return (
@@ -52,7 +62,7 @@ const Index = () => {
       <div className="flex flex-col md:flex-row h-[calc(100vh-80px)]">
         {/* AI Chat Sidebar - Hidden on mobile when dashboard is shown */}
         <div className={`${showDashboard ? 'hidden md:block' : 'block'}`}>
-          <AIChat />
+          <AIChat selectedRegion={selectedRegionName} />
         </div>
         
         {/* Map Container */}
@@ -60,6 +70,8 @@ const Index = () => {
           <MapboxMap 
             onRegionClick={handleRegionClick}
             mapboxToken={mapboxToken}
+            selectedRegion={selectedRegionName}
+            onResetZoom={handleResetZoom}
           />
           
           {/* Floating Info Card - Only show when no region is selected */}
