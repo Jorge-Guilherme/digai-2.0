@@ -19,7 +19,7 @@ const AIChat: React.FC<AIChatProps> = ({ selectedRegion }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'Olá! Sou a desenrolAI, IA do digAI. Posso ajudá-lo a encontrar informações sobre o Recife. Pergunte sobre investimentos, escolas, saúde ou obras em qualquer região!',
+      text: 'Olá! Sou a IA do digAI. Posso ajudá-lo a encontrar informações sobre o Recife. Pergunte sobre investimentos, escolas, saúde ou obras em qualquer região!',
       isUser: false,
       timestamp: new Date()
     }
@@ -93,7 +93,7 @@ Responda de forma clara e objetiva, com no máximo 100 palavras. Não inclua neg
       <div className="p-4 border-b border-border bg-card">
         <div className="flex items-center gap-2">
           <Bot className="w-6 h-6 text-neon-blue" />
-          <h3 className="font-semibold text-card-foreground">desenrolAI</h3>
+          <h3 className="font-semibold text-card-foreground">Chat Inteligente</h3>
         </div>
         <p className="text-sm text-muted-foreground mt-1">
           Assistente inteligente para dados urbanos
