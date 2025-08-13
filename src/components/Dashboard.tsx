@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Building, School, Heart, Wrench } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+// Removido gráfico (recharts) conforme solicitação
 
 interface DashboardProps {
   regionData: {
@@ -17,56 +17,31 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ regionData, isVisible }) => {
   // Remover log fora de escopo, adicionar log correto dentro do then
-  const [chartData, setChartData] = useState<any[]>([]);
   const [story, setStory] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!regionData) return;
     setLoading(true);
-
-    const promptChart = `
-Gere um resumo dos principais dados urbanos da região "${regionData.name}" do Recife no seguinte formato JSON:
-[
-  { "categoria": "Escolas", "valor": ${regionData.escolas} },
-  { "categoria": "Saúde", "valor": ${regionData.saude} },
-  { "categoria": "Investimento", "valor": ${regionData.investimento} }
-]
-Apenas o JSON, sem explicações.
-    `;
-
-    const promptStory = `
-Conte uma breve história (máximo 80 palavras) sobre os dados urbanos da região "${regionData.name}" do Recife, destacando investimentos, escolas e saúde.
-    `;
-
-    const fetchFromGemini = async (prompt: string) => {
-      const res = await fetch('/api/gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
-      });
-      const data = await res.json();
-      return data.text;
-    };
-
-    Promise.all([
-      fetchFromGemini(promptChart),
-      fetchFromGemini(promptStory)
-    ]).then(([chartText, storyText]) => {
-      console.log('Resposta Gemini para gráfico:', chartText);
-      // Remove blocos markdown e espaços extras
-      let cleanChartText = chartText
-        .replace(/```json|```/gi, '')
-        .replace(/```/g, '')
-        .trim();
-      try {
-        setChartData(JSON.parse(cleanChartText));
-      } catch {
-        setChartData([]);
-      }
-      setStory(storyText);
-      setLoading(false);
-    });
+    const promptStory = `Conte uma breve história (máximo 80 palavras) sobre os dados urbanos da região "${regionData.name}" do Recife, destacando investimentos, escolas e saúde.`;
+    fetch('/api/chatgpt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: promptStory, use_context: false })
+    })
+      .then(async r => {
+        const data = await r.json();
+        if (!r.ok || data.error) {
+          setErrorMsg(data.error || 'Erro ao gerar resposta');
+          setStory('');
+        } else {
+          setErrorMsg(null);
+          setStory(data.text || '');
+        }
+      })
+      .catch(() => { setErrorMsg('Falha na conexão com o serviço'); setStory(''); })
+      .finally(() => setLoading(false));
   }, [regionData]);
 
   if (!isVisible || !regionData) return null;
@@ -75,7 +50,8 @@ Conte uma breve história (máximo 80 palavras) sobre os dados urbanos da regiã
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value);
   };
 
@@ -88,28 +64,15 @@ Conte uma breve história (máximo 80 palavras) sobre os dados urbanos da regiã
           <div className="w-16 h-1 bg-gradient-neon mx-auto rounded-full"></div>
         </div>
 
-        {/* Gráfico IA */}
-        <div className="bg-card border border-border rounded-lg p-4 mb-4">
-          <h3 className="font-semibold mb-2 text-card-foreground">Resumo Visual (IA)</h3>
-          {loading ? (
-            <div className="text-center text-muted-foreground">Carregando gráfico...</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={chartData}>
-                <XAxis dataKey="categoria" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="valor" fill="#00D9FF" />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+  {/* Seção de gráfico removida */}
 
         {/* História IA */}
         <div className="bg-card border border-border rounded-lg p-4 mb-4">
           <h3 className="font-semibold mb-2 text-card-foreground">História da Região (IA)</h3>
           {loading ? (
             <div className="text-center text-muted-foreground">Carregando história...</div>
+          ) : errorMsg ? (
+            <p className="text-sm text-destructive">{errorMsg}</p>
           ) : (
             <p className="text-sm text-muted-foreground">{story}</p>
           )}

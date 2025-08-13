@@ -3,6 +3,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { bairrosRecife, bairrosRecifeByName } from '@/data/recifeBairros';
 
 interface MapboxMapProps {
   onRegionClick: (regionData: any) => void;
@@ -11,41 +12,7 @@ interface MapboxMapProps {
   onResetZoom?: () => void;
 }
 
-// Dados mockados das regiões do Recife
-const mockRegionsData = {
-  "Boa Viagem": {
-    name: "Boa Viagem",
-    escolas: 12,
-    saude: 4,
-    investimento: 8000000,
-    obras: ["Revitalização da Praia", "Novo Centro de Saúde"],
-    coordinates: [-34.8986, -8.1137] // [lng, lat]
-  },
-  "Centro": {
-    name: "Centro",
-    escolas: 8,
-    saude: 6,
-    investimento: 12000000,
-    obras: ["Restauro do Teatro Santa Isabel", "Modernização do Mercado"],
-    coordinates: [-34.8711, -8.0578]
-  },
-  "Zona Norte": {
-    name: "Zona Norte",
-    escolas: 25,
-    saude: 8,
-    investimento: 15000000,
-    obras: ["Construção de 3 novas escolas", "Hospital Regional"],
-    coordinates: [-34.8765, -8.0276]
-  },
-  "Ibura": {
-    name: "Ibura",
-    escolas: 18,
-    saude: 5,
-    investimento: 15000000,
-    obras: ["Centro Esportivo", "Unidade de Pronto Atendimento"],
-    coordinates: [-34.9456, -8.1437]
-  }
-};
+// Substituído por dataset importado bairrosRecife
 
 const MapboxMap: React.FC<MapboxMapProps> = ({ onRegionClick, mapboxToken, selectedRegion, onResetZoom }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -94,8 +61,9 @@ const MapboxMap: React.FC<MapboxMapProps> = ({ onRegionClick, mapboxToken, selec
         }
       });
 
-      Object.entries(mockRegionsData).forEach(([name, data]) => {
-        const lngLat = data.coordinates as [number, number];
+      bairrosRecife.forEach((data) => {
+        const name = data.name;
+        const lngLat = data.coordinates;
         const marker = new mapboxgl.Marker({
           color: '#00D9FF',
           scale: 1.5
@@ -127,9 +95,9 @@ const MapboxMap: React.FC<MapboxMapProps> = ({ onRegionClick, mapboxToken, selec
     if (!selectedRegion) {
       map.current.flyTo({ center: [-34.8851, -8.0476], zoom: 11, pitch: 45, bearing: 0, speed: 1.2 });
     } else {
-      const region = mockRegionsData[selectedRegion];
+      const region = bairrosRecifeByName[selectedRegion];
       if (region) {
-        const lngLat = region.coordinates as [number, number];
+        const lngLat = region.coordinates;
         map.current.flyTo({ center: lngLat, zoom: 15, pitch: 45, bearing: 0, speed: 1.2 });
       }
     }

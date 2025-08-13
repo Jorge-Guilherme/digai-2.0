@@ -25,3 +25,10 @@ dist-ssr
 
 *storybook.log
 storybook-static
+
+# Python service ignores
+service/.env
+service/.venv/
+service/vectorstore/
+service/service/vectorstore/
+nvev/
