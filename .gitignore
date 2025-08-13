@@ -32,3 +32,6 @@ service/.venv/
 service/vectorstore/
 service/service/vectorstore/
 nvev/
+
+# Vercel local config
+.vercel/
